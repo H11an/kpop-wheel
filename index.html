@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>✨ 我的专属偶像生成器 ✨</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- 背景装饰：光斑 + 漂浮星星 -->
+  <div class="bg-decor" aria-hidden="true">
+    <span class="bg-orb orb1"></span>
+    <span class="bg-orb orb2"></span>
+    <span class="bg-orb orb3"></span>
+    <span class="bg-star star1">✦</span>
+    <span class="bg-star star2">✦</span>
+    <span class="bg-star star3">✧</span>
+    <span class="bg-star star4">✦</span>
+  </div>
+
+  <!-- 标题与步骤指示器 -->
+  <header class="titlebar">
+    <h1 class="title">✨ 我的专属偶像生成器 ✨</h1>
+    <p class="subtitle">转动命运的转盘，拼出你的专属偶像！</p>
+    <div class="steps">
+      <div class="step" id="stepGroup"><span class="step-num">①</span><span>抽组合</span></div>
+      <span class="step-arrow">→</span>
+      <div class="step" id="stepMember"><span class="step-num">②</span><span>抽成员</span></div>
+      <span class="step-arrow">→</span>
+      <div class="step" id="stepAttr"><span class="step-num">③</span><span>抽属性</span></div>
+    </div>
+  </header>
+
+  <!-- 主区域：左属性栏 + 右转盘 -->
+  <main class="layout">
+    <section class="panel">
+      <h2 class="panel-title">💗 我的偶像</h2>
+      <p class="panel-hint">小提示：格子填好后可点右下角 ↺ 重新抽取这一格</p>
+      <div class="slots" id="slots"></div>
+    </section>
+
+    <section class="wheel-zone">
+      <div class="wheel-frame" id="wheelFrame">
+        <div class="pointer" aria-hidden="true"></div>
+        <div class="wheel" id="wheel"></div>
+        <div class="hub" aria-hidden="true">★</div>
+      </div>
+      <button class="spin-btn" id="spinBtn">🌸 转组合转盘！</button>
+      <div class="info-bar" id="infoBar"></div>
+    </section>
+  </main>
+
+  <!-- 结果弹层 -->
+  <div class="overlay" id="overlay" hidden>
+    <div class="result-card" id="resultCard"></div>
+  </div>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
