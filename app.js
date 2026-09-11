@@ -115,20 +115,26 @@ function renderWheel() {
   let fontSize = n <= 6 ? 16 : n <= 9 ? 14 : n <= 12 ? 12 : n <= 16 ? 10.5 : 9.5;
   const maxLen = Math.max(...items.map(it => it.label.length));
   const halfMax = (radius - HUB_RADIUS - 20) / 2; // 标签中心到内外边界各留出的径向空间
-  let h = maxLen * fontSize * 1.15;
+  let h = maxLen * fontSize * 1.15 + (maxLen - 1); // 1px 字距也算进列高
   if (h / 2 > halfMax) {
-    fontSize = Math.max(7, Math.floor((2 * halfMax) / (maxLen * 1.15)));
+    fontSize = Math.max(7, Math.floor((2 * halfMax - (maxLen - 1)) / (maxLen * 1.15)));
   }
   const R = (HUB_RADIUS + radius) / 2; // 标签径向位置：内外边界的中间
 
+  // 每个标签 = 全层旋转容器 + 显式定尺寸的竖排 span，保证文字中心精确落在扇区中心线上
   items.forEach((it, i) => {
     const center = ((i + 0.5) * 360) / n; // 扇区中心角（从 12 点方向顺时针）
     const label = document.createElement('div');
     label.className = 'wheel-label';
-    label.textContent = it.label;
-    label.style.fontSize = fontSize + 'px';
-    label.style.lineHeight = '1.15';
-    label.style.transform = 'translate(-50%, -50%) rotate(' + center + 'deg) translateY(' + (-R) + 'px)';
+    label.style.transform = 'rotate(' + center + 'deg)';
+    const text = document.createElement('span');
+    text.textContent = it.label;
+    text.style.fontSize = fontSize + 'px';
+    text.style.lineHeight = '1.15';
+    text.style.width = fontSize + 'px'; // 宽 = 一个字形列
+    text.style.height = (it.label.length * fontSize * 1.15 + (it.label.length - 1)) + 'px'; // 高 = 文字列长度
+    text.style.transform = 'translateY(' + (-R) + 'px)';
+    label.appendChild(text);
     wheelEl.appendChild(label);
   });
 

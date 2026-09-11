@@ -145,13 +145,16 @@ body {
   box-shadow: 0 16px 44px rgba(201, 150, 255, .35), inset 0 0 0 3px #fff;
 }
 .wheel-label {
-  position: absolute; left: 50%; top: 50%;
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
   transform-origin: center;
+  pointer-events: none;
+}
+.wheel-label span {
   writing-mode: vertical-rl;
   white-space: nowrap; text-align: center;
   color: var(--ink); font-weight: 700;
   letter-spacing: 1px;
-  pointer-events: none;
 }
 
 .pointer {
