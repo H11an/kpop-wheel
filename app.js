@@ -99,7 +99,9 @@ function buildConicGradient(n, colors) {
     stops.push(colors[i % colors.length] + ' ' + s + 'deg ' + (e - gap) + 'deg');
     stops.push('#FFFFFF ' + (e - gap) + 'deg ' + e + 'deg');
   }
-  return 'conic-gradient(from -90deg, ' + stops.join(', ') + ')';
+  // 从 −seg/2 开始：扇区 i 以 (i × seg) 为中心（从 12 点方向顺时针），
+  // 转盘静止时顶部指针正对扇区 0 的中心，标签、落点计算共用此约定
+  return 'conic-gradient(from ' + (-seg / 2) + 'deg, ' + stops.join(', ') + ')';
 }
 
 // 渲染当前步骤的转盘（清空重建，角度归零）
@@ -123,7 +125,7 @@ function renderWheel() {
 
   // 每个标签 = 全层旋转容器 + 显式定尺寸的竖排 span，保证文字中心精确落在扇区中心线上
   items.forEach((it, i) => {
-    const center = ((i + 0.5) * 360) / n; // 扇区中心角（从 12 点方向顺时针）
+    const center = (i * 360) / n; // 扇区中心角（从 12 点方向顺时针，扇区 i 以 i×seg 为中心）
     const label = document.createElement('div');
     label.className = 'wheel-label';
     label.style.transform = 'rotate(' + center + 'deg)';
@@ -146,8 +148,9 @@ function renderWheel() {
 
 // 由转盘旋转角反推指针（顶部）指向的扇区，纯数学计算，不读 DOM
 function getSectorAtAngle(theta, n) {
-  const p = (((360 - theta) % 360) + 360) % 360;
-  return Math.min(Math.floor(p / (360 / n)), n - 1);
+  const p = (((360 - theta) % 360) + 360) % 360; // 指针所在角度（从 12 点顺时针，扇区坐标系）
+  const seg = 360 / n;
+  return Math.floor(((p + seg / 2) % 360) / seg); // 扇区 i 以 i×seg 为中心
 }
 
 // 转动一次转盘
@@ -159,7 +162,7 @@ function spinWheel() {
   // 1) 随机选目标扇区
   const idx = Math.floor(Math.random() * n);
   // 2) 指针落在扇区中间带（中心 ±35% 扇区角），避开边界白线
-  const pTarget = (((idx + 0.5) * seg + (Math.random() * 0.7 - 0.35) * seg) % 360 + 360) % 360;
+  const pTarget = (((idx * seg) + (Math.random() * 0.7 - 0.35) * seg) % 360 + 360) % 360;
   // 3) 指针在顶部：本地角 p 与屏幕旋转角 θ 的关系 p ≡ (360 − θ)
   const thetaTarget = (360 - pTarget) % 360;
   const thetaNow = state.totalRotation % 360;
