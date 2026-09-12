@@ -106,17 +106,6 @@ body {
 .slot-source { font-size: 11px; color: var(--ink-soft); text-align: center; padding: 0 6px; }
 .slot.pop { animation: pop .45s cubic-bezier(.34, 1.56, .64, 1); }
 
-.slot-reroll {
-  position: absolute; right: 6px; bottom: 6px;
-  width: 24px; height: 24px; border-radius: 50%;
-  border: none; background: #FFEFF7; color: var(--pink1);
-  font-size: 14px; cursor: pointer;
-  opacity: 0; pointer-events: none;
-  transition: opacity .25s;
-}
-.slot-reroll.show { opacity: 1; pointer-events: auto; }
-.slot-reroll:hover { background: var(--pink2); }
-
 @keyframes pulse {
   0%, 100% { box-shadow: 0 0 0 3px rgba(255, 158, 196, .5); }
   50% { box-shadow: 0 0 0 9px rgba(255, 158, 196, .15); }

@@ -59,12 +59,7 @@ function buildSlots() {
     div.innerHTML =
       '<div class="slot-attr">待抽取</div>' +
       '<div class="slot-grade">?</div>' +
-      '<div class="slot-source"></div>' +
-      '<button class="slot-reroll" title="重新抽取这一格">↺</button>';
-    div.querySelector('.slot-reroll').addEventListener('click', (e) => {
-      e.stopPropagation();
-      rerollSlot(i);
-    });
+      '<div class="slot-source"></div>';
     slotsEl.appendChild(div);
     slotEls.push(div);
   }
@@ -223,7 +218,7 @@ function onSpinEnd() {
 }
 
 /* ============================================================
-   属性栏：填格 / 重抽 / 渲染
+   属性栏：填格 / 渲染
    ============================================================ */
 function fillSlot(i, data) {
   state.slots[i] = data;
@@ -247,38 +242,23 @@ function fillSlot(i, data) {
   }
 }
 
-function rerollSlot(i) {
-  if (state.isSpinning || state.finished) return;
-  state.slots[i] = null;
-  renderSlot(i);
-  state.currentSlot = i;
-  state.step = 'group';
-  state.pickedGroup = null;
-  state.pickedMember = null;
-  renderWheel();
-  updateStepUI();
-}
-
 function renderSlot(i) {
   const data = state.slots[i];
   const el = slotEls[i];
   const attrEl = el.querySelector('.slot-attr');
   const gradeEl = el.querySelector('.slot-grade');
   const sourceEl = el.querySelector('.slot-source');
-  const rerollEl = el.querySelector('.slot-reroll');
   if (data) {
     attrEl.textContent = data.attrName;
     gradeEl.textContent = data.grade;
     gradeEl.className = 'slot-grade ' + GRADE_CLASS[data.grade];
     sourceEl.textContent = data.memberName + ' · ' + data.groupName;
-    rerollEl.classList.add('show');
     el.classList.add('filled');
   } else {
     attrEl.textContent = '待抽取';
     gradeEl.textContent = '?';
     gradeEl.className = 'slot-grade';
     sourceEl.textContent = '';
-    rerollEl.classList.remove('show');
     el.classList.remove('filled');
   }
 }
