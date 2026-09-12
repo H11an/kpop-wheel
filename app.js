@@ -1,6 +1,6 @@
 /* ============================================================
    我的专属偶像生成器 · 核心逻辑
-   流程：转组合 → 转成员 → 转属性 → 填格，8 格满后生成偶像卡
+   流程：转属性 → 转组合 → 转成员 → 填格，8 格满后生成偶像卡
    ============================================================ */
 'use strict';
 
@@ -22,15 +22,15 @@ const stepEls = {
 const SPIN_DURATION = 4200;   // 旋转动画时长（ms）
 const HUB_RADIUS = 26;        // 中心装饰圆半径，标签文字需避开
 const GRADE_CLASS = { 'S': 'g-S', 'A+': 'g-AP', 'A': 'g-A', 'B+': 'g-BP', 'B': 'g-B', 'C+': 'g-CP', 'C': 'g-C', 'D': 'g-D' };
-const STEP_BTN_TEXT = { group: '🌸 转组合转盘！', member: '🌟 转成员转盘！', attr: '✨ 转属性转盘！' };
+const STEP_BTN_TEXT = { attr: '✨ 转属性转盘！', group: '🌸 转组合转盘！', member: '🌟 转成员转盘！' };
 
 /* ---------- 全局状态 ---------- */
 const state = {
   slots: Array(8).fill(null), // 每格: { groupName, generation, memberName, attrId, attrName, grade } | null
   currentSlot: 0,             // 当前待填格 0..7
-  step: 'group',              // 'group' | 'member' | 'attr'
+  step: 'attr',               // 'attr' | 'group' | 'member'
+  pickedAttr: null,
   pickedGroup: null,
-  pickedMember: null,
   isSpinning: false,
   totalRotation: 0,           // 转盘累计旋转角度（度）
   finished: false,
@@ -196,35 +196,23 @@ function onSpinEnd() {
   const n = items.length;
   const landed = items[getSectorAtAngle(state.totalRotation, n)];
 
-  if (state.step === 'group') {
+  if (state.step === 'attr') {
+    state.pickedAttr = landed.ref;
+    state.step = 'group';
+    renderWheel();
+  } else if (state.step === 'group') {
     state.pickedGroup = landed.ref;
     state.step = 'member';
     renderWheel();
-  } else if (state.step === 'member') {
-    state.pickedMember = landed.ref;
-    const unfilled = ATTRS.filter(a => !state.slots.some(s => s && s.attrId === a.id));
-    if (unfilled.length === 1) {
-      // 只剩最后一个未抽取属性：直接填格，不再转单扇区属性盘
-      fillSlot(state.currentSlot, {
-        groupName: state.pickedGroup.name,
-        generation: state.pickedGroup.generation,
-        memberName: state.pickedMember.name,
-        attrId: unfilled[0].id,
-        attrName: unfilled[0].name,
-        grade: state.pickedMember.stats[unfilled[0].id],
-      });
-    } else {
-      state.step = 'attr';
-      renderWheel();
-    }
   } else {
+    // member 步：成员落地即填格
     fillSlot(state.currentSlot, {
       groupName: state.pickedGroup.name,
       generation: state.pickedGroup.generation,
-      memberName: state.pickedMember.name,
-      attrId: landed.ref.id,
-      attrName: landed.ref.name,
-      grade: state.pickedMember.stats[landed.ref.id],
+      memberName: landed.ref.name,
+      attrId: state.pickedAttr.id,
+      attrName: state.pickedAttr.name,
+      grade: landed.ref.stats[state.pickedAttr.id],
     });
   }
   updateStepUI();
@@ -247,9 +235,15 @@ function fillSlot(i, data) {
     state.resultTimer = setTimeout(showResult, 700);
   } else {
     state.currentSlot = i + 1;
-    state.step = 'group';
+    state.step = 'attr';
+    state.pickedAttr = null;
     state.pickedGroup = null;
-    state.pickedMember = null;
+    const unfilled = ATTRS.filter(a => !state.slots.some(s => s && s.attrId === a.id));
+    if (unfilled.length === 1) {
+      // 只剩最后一个属性：自动选定，跳过单扇区属性盘
+      state.pickedAttr = unfilled[0];
+      state.step = 'group';
+    }
     renderWheel();
     updateStepUI();
   }
@@ -281,7 +275,7 @@ function renderSlot(i) {
    ============================================================ */
 function updateStepUI() {
   // 步骤指示器
-  const order = ['group', 'member', 'attr'];
+  const order = ['attr', 'group', 'member'];
   const stepIdx = order.indexOf(state.step);
   order.forEach((key, i) => {
     const el = stepEls[key];
@@ -312,14 +306,14 @@ function updateStepUI() {
 function buildInfoText() {
   if (state.finished) return '🎉 8 格全部填满！看看你的专属偶像吧～';
   const spinning = state.isSpinning;
+  const a = state.pickedAttr;
   const g = state.pickedGroup;
-  const m = state.pickedMember;
-  const gTxt = g ? g.name + ((state.step === 'member' || state.step === 'attr') ? ' ✓' : '')
+  const aTxt = a ? a.name + ((state.step === 'group' || state.step === 'member') ? ' ✓' : '')
+    : (spinning && state.step === 'attr' ? '转动中…' : '?');
+  const gTxt = g ? g.name + (state.step === 'member' ? ' ✓' : '')
     : (spinning && state.step === 'group' ? '转动中…' : '?');
-  const mTxt = m ? m.name + (state.step === 'attr' ? ' ✓' : '')
-    : (spinning && state.step === 'member' ? '转动中…' : '?');
-  const aTxt = spinning && state.step === 'attr' ? '转动中…' : '?';
-  return '组合：' + gTxt + '　→　成员：' + mTxt + '　→　属性：' + aTxt;
+  const mTxt = spinning && state.step === 'member' ? '转动中…' : '?';
+  return '属性：' + aTxt + '　→　组合：' + gTxt + '　→　成员：' + mTxt;
 }
 
 /* ============================================================
@@ -421,9 +415,9 @@ function resetGame() {
   overlay.hidden = true;
   state.slots = Array(8).fill(null);
   state.currentSlot = 0;
-  state.step = 'group';
+  state.step = 'attr';
+  state.pickedAttr = null;
   state.pickedGroup = null;
-  state.pickedMember = null;
   state.isSpinning = false;
   state.totalRotation = 0;
   state.finished = false;
