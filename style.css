@@ -179,6 +179,30 @@ body {
   color: var(--gold); font-size: 22px;
 }
 
+/* ---- 落定提示：转盘中央弹出抽中结果 ---- */
+.landed-toast {
+  position: absolute; left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 8;
+  padding: 10px 22px;
+  background: rgba(255, 255, 255, .94);
+  border-radius: 999px;
+  box-shadow: 0 10px 30px rgba(255, 150, 200, .35);
+  font-size: 18px; font-weight: 800; color: var(--ink);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+}
+.landed-toast[hidden] { display: none; }
+.landed-toast.show { animation: toastPop 1.7s cubic-bezier(.34, 1.56, .64, 1) forwards; }
+@keyframes toastPop {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(.3); }
+  14%  { opacity: 1; transform: translate(-50%, -50%) scale(1.06); }
+  22%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  78%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+}
+
 .spin-btn {
   border: none; cursor: pointer;
   padding: 14px 42px;
@@ -262,6 +286,7 @@ body {
   .title { font-size: 24px; }
   .layout { flex-direction: column; align-items: center; gap: 26px; padding: 20px 12px 50px; }
   .wheel-frame { width: 320px; height: 320px; }
+  .landed-toast { font-size: 15px; padding: 8px 16px; }
   .hub { width: 48px; height: 48px; font-size: 18px; }
   .slots { grid-template-columns: repeat(4, 74px); gap: 8px; }
   .slot { min-height: 92px; }

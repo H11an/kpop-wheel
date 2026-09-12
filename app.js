@@ -10,6 +10,7 @@ const wheelFrame = document.getElementById('wheelFrame');
 const slotsEl = document.getElementById('slots');
 const spinBtn = document.getElementById('spinBtn');
 const infoBar = document.getElementById('infoBar');
+const toastEl = document.getElementById('landedToast');
 const overlay = document.getElementById('overlay');
 const resultCard = document.getElementById('resultCard');
 const stepEls = {
@@ -36,6 +37,7 @@ const state = {
   finished: false,
   endTimer: null,             // 转盘动画兜底定时器
   resultTimer: null,          // 结果弹层延时定时器
+  toastTimer: null,           // 落定提示淡出定时器
 };
 
 const slotEls = [];           // 8 个属性格的 DOM 引用
@@ -201,12 +203,15 @@ function onSpinEnd() {
     state.step = 'group';
     renderWheel();
     renderSlot(state.currentSlot); // 立刻把抽中的属性名显示到当前格
+    showLandedToast('✨ 抽中属性：' + landed.ref.name);
   } else if (state.step === 'group') {
     state.pickedGroup = landed.ref;
     state.step = 'member';
     renderWheel();
+    showLandedToast('🌸 抽中组合：' + landed.ref.name);
   } else {
     // member 步：成员落地即填格
+    showLandedToast('🌟 抽中成员：' + landed.ref.name);
     fillSlot(state.currentSlot, {
       groupName: state.pickedGroup.name,
       generation: state.pickedGroup.generation,
@@ -245,6 +250,8 @@ function fillSlot(i, data) {
       state.pickedAttr = unfilled[0];
       state.step = 'group';
       renderSlot(state.currentSlot); // 自动选定的属性名立即显示到当前格
+      // 本格成员的落定提示还在播放，1.8 秒后再弹出自动选定提示，避免互相盖住
+      state.toastTimer = setTimeout(() => showLandedToast('✨ 自动选定属性：' + unfilled[0].name), 1800);
     }
     renderWheel();
     updateStepUI();
@@ -320,6 +327,20 @@ function buildInfoText() {
     : (spinning && state.step === 'group' ? '转动中…' : '?');
   const mTxt = spinning && state.step === 'member' ? '转动中…' : '?';
   return '属性：' + aTxt + '　→　组合：' + gTxt + '　→　成员：' + mTxt;
+}
+
+// 转盘落定后，在转盘中央弹出抽中结果的动画提示
+function showLandedToast(text) {
+  clearTimeout(state.toastTimer);
+  toastEl.textContent = text;
+  toastEl.hidden = false;
+  toastEl.classList.remove('show');
+  void toastEl.offsetWidth; // 强制 reflow，让动画重新播放
+  toastEl.classList.add('show');
+  state.toastTimer = setTimeout(() => {
+    toastEl.classList.remove('show');
+    toastEl.hidden = true;
+  }, 1700);
 }
 
 /* ============================================================
@@ -429,6 +450,9 @@ function resetGame() {
   state.finished = false;
   clearTimeout(state.endTimer);
   clearTimeout(state.resultTimer);
+  clearTimeout(state.toastTimer);
+  toastEl.classList.remove('show');
+  toastEl.hidden = true;
   for (let i = 0; i < 8; i++) renderSlot(i);
   renderWheel();
   updateStepUI();
