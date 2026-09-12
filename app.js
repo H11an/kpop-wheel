@@ -202,8 +202,21 @@ function onSpinEnd() {
     renderWheel();
   } else if (state.step === 'member') {
     state.pickedMember = landed.ref;
-    state.step = 'attr';
-    renderWheel();
+    const unfilled = ATTRS.filter(a => !state.slots.some(s => s && s.attrId === a.id));
+    if (unfilled.length === 1) {
+      // 只剩最后一个未抽取属性：直接填格，不再转单扇区属性盘
+      fillSlot(state.currentSlot, {
+        groupName: state.pickedGroup.name,
+        generation: state.pickedGroup.generation,
+        memberName: state.pickedMember.name,
+        attrId: unfilled[0].id,
+        attrName: unfilled[0].name,
+        grade: state.pickedMember.stats[unfilled[0].id],
+      });
+    } else {
+      state.step = 'attr';
+      renderWheel();
+    }
   } else {
     fillSlot(state.currentSlot, {
       groupName: state.pickedGroup.name,
