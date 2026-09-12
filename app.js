@@ -340,7 +340,14 @@ function valueToGrade(v) {
 function calcOverall() {
   const vals = state.slots.map(s => GRADE_VALUES[s.grade]);
   const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
-  return { avg, grade: valueToGrade(avg) };
+  const maxVal = Math.max(...vals);
+  const minVal = Math.min(...vals);
+  return {
+    avg,
+    grade: valueToGrade(avg),
+    topAttr: state.slots.find(s => GRADE_VALUES[s.grade] === maxVal).attrName,  // 最强属性
+    weakAttr: state.slots.find(s => GRADE_VALUES[s.grade] === minVal).attrName, // 最弱属性
+  };
 }
 
 function getDebutRating(avg) {
@@ -366,14 +373,16 @@ function getFunTitle(avg) {
   return '未来可期';
 }
 
-// 按出道评级随机取一条小评语
-function pickComment(rating) {
-  const pool = RESULT_COMMENTS[rating] || [];
-  return pool[Math.floor(Math.random() * pool.length)] || '';
+// 按出道评级随机取一条小评语：有强弱差时点名最强/最弱属性，无强弱差（六边形）时取均衡评语
+function pickComment(rating, topAttr, weakAttr) {
+  const tier = RESULT_COMMENTS[rating] || { gap: [], even: [] };
+  const pool = topAttr === weakAttr ? tier.even : tier.gap;
+  const tpl = pool[Math.floor(Math.random() * pool.length)] || '';
+  return tpl.replace('{top}', topAttr).replace('{weak}', weakAttr);
 }
 
 function showResult() {
-  const { avg, grade } = calcOverall();
+  const { avg, grade, topAttr, weakAttr } = calcOverall();
   const rating = getDebutRating(avg);
 
   const badges = state.slots.map(s =>
@@ -392,7 +401,7 @@ function showResult() {
     '<div class="rc-rating">' + rating + '</div>' +
     '<div class="rc-title">「' + getFunTitle(avg) + '」</div>' +
     '<div class="rc-avg">综合评分 ' + avg.toFixed(1) + '</div>' +
-    '<div class="rc-comment">💬 ' + pickComment(rating) + '</div>' +
+    '<div class="rc-comment">💬 ' + pickComment(rating, topAttr, weakAttr) + '</div>' +
     '<div class="rc-badges">' + badges + '</div>' +
     '<div class="rc-divider"></div>' +
     '<div class="rc-details">' + details + '</div>' +
