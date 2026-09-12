@@ -200,6 +200,7 @@ function onSpinEnd() {
     state.pickedAttr = landed.ref;
     state.step = 'group';
     renderWheel();
+    renderSlot(state.currentSlot); // 立刻把抽中的属性名显示到当前格
   } else if (state.step === 'group') {
     state.pickedGroup = landed.ref;
     state.step = 'member';
@@ -243,6 +244,7 @@ function fillSlot(i, data) {
       // 只剩最后一个属性：自动选定，跳过单扇区属性盘
       state.pickedAttr = unfilled[0];
       state.step = 'group';
+      renderSlot(state.currentSlot); // 自动选定的属性名立即显示到当前格
     }
     renderWheel();
     updateStepUI();
@@ -261,12 +263,16 @@ function renderSlot(i) {
     gradeEl.className = 'slot-grade ' + GRADE_CLASS[data.grade];
     sourceEl.textContent = data.memberName + ' · ' + data.groupName;
     el.classList.add('filled');
+    el.classList.remove('picked');
   } else {
-    attrEl.textContent = '待抽取';
+    // 属性盘已落定但该格尚未填满：先显示已抽中的属性名
+    const pending = i === state.currentSlot && state.pickedAttr;
+    attrEl.textContent = pending ? state.pickedAttr.name : '待抽取';
     gradeEl.textContent = '?';
     gradeEl.className = 'slot-grade';
     sourceEl.textContent = '';
     el.classList.remove('filled');
+    el.classList.toggle('picked', !!pending);
   }
 }
 

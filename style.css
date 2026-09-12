@@ -103,6 +103,7 @@ body {
 .slot.current { border-color: var(--pink1); animation: pulse 1.6s ease-in-out infinite; }
 .slot.filled { border-style: solid; background: #fff; }
 .slot-attr { font-size: 13px; color: var(--ink-soft); }
+.slot.picked .slot-attr { color: var(--pink1); font-weight: 700; }
 .slot-grade { font-size: 34px; font-weight: 800; line-height: 1.1; color: #D9CCE3; }
 .slot-source { font-size: 11px; color: var(--ink-soft); text-align: center; padding: 0 6px; }
 .slot.pop { animation: pop .45s cubic-bezier(.34, 1.56, .64, 1); }
