@@ -8,6 +8,7 @@
   --pink1: #FF9EC4;
   --pink2: #FFD9EC;
   --purple: #C9B6FF;
+  --purple-deep: #9B7BD8;
   --gold: #F5C56B;
   --ink: #5A4A66;
   --ink-soft: #9A8AAB;
@@ -238,6 +239,7 @@ body {
 }
 .rc-title { margin-top: 10px; font-size: 19px; font-weight: 800; }
 .rc-avg { margin-top: 4px; font-size: 12px; color: var(--ink-soft); }
+.rc-comment { margin-top: 8px; font-size: 14px; font-weight: 600; color: var(--purple-deep); }
 .rc-badges { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 16px; }
 .rc-badge {
   display: flex; align-items: center; gap: 5px;

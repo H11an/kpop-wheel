@@ -366,8 +366,15 @@ function getFunTitle(avg) {
   return '未来可期';
 }
 
+// 按出道评级随机取一条小评语
+function pickComment(rating) {
+  const pool = RESULT_COMMENTS[rating] || [];
+  return pool[Math.floor(Math.random() * pool.length)] || '';
+}
+
 function showResult() {
   const { avg, grade } = calcOverall();
+  const rating = getDebutRating(avg);
 
   const badges = state.slots.map(s =>
     '<span class="rc-badge"><span class="rc-badge-attr">' + s.attrName + '</span><b class="' + GRADE_CLASS[s.grade] + '">' + s.grade + '</b></span>'
@@ -382,9 +389,10 @@ function showResult() {
   resultCard.innerHTML =
     '<div class="rc-head">🎉 恭喜成团！</div>' +
     '<div class="rc-grade ' + GRADE_CLASS[grade] + '">' + grade + '</div>' +
-    '<div class="rc-rating">' + getDebutRating(avg) + '</div>' +
+    '<div class="rc-rating">' + rating + '</div>' +
     '<div class="rc-title">「' + getFunTitle(avg) + '」</div>' +
     '<div class="rc-avg">综合评分 ' + avg.toFixed(1) + '</div>' +
+    '<div class="rc-comment">💬 ' + pickComment(rating) + '</div>' +
     '<div class="rc-badges">' + badges + '</div>' +
     '<div class="rc-divider"></div>' +
     '<div class="rc-details">' + details + '</div>' +
