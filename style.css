@@ -280,6 +280,31 @@ body {
 .rc-line-from { flex: 1; }
 .rc-line b { font-size: 13px; }
 #againBtn { margin-top: 22px; }
+.rc-actions { display: flex; justify-content: center; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
+.rc-btn-ghost {
+  border: 2px solid var(--pink2); background: #fff;
+  color: var(--pink1); cursor: pointer;
+  padding: 10px 26px; font-size: 15px; font-weight: 700;
+  font-family: inherit; border-radius: 999px;
+  transition: transform .15s, box-shadow .15s, background .2s;
+}
+.rc-btn-ghost:hover { background: #FFF5FA; transform: translateY(-2px); box-shadow: 0 8px 18px rgba(255, 158, 196, .25); }
+.share-panel {
+  margin-top: 14px; padding: 14px;
+  background: #FFF9FD; border: 1px solid var(--border-soft);
+  border-radius: 16px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.share-panel[hidden] { display: none; }
+.share-opt {
+  border: none; cursor: pointer; background: #fff;
+  padding: 10px 14px; font-size: 14px; font-weight: 600;
+  font-family: inherit; color: var(--ink);
+  border-radius: 12px; text-align: center;
+  transition: background .2s;
+}
+.share-opt:hover { background: var(--pink2); }
+.share-msg { font-size: 12.5px; color: #5CB87F; min-height: 16px; text-align: center; }
 
 /* ============ 移动端 ============ */
 @media (max-width: 760px) {

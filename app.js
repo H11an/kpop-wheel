@@ -38,6 +38,8 @@ const state = {
   endTimer: null,             // 转盘动画兜底定时器
   resultTimer: null,          // 结果弹层延时定时器
   toastTimer: null,           // 落定提示淡出定时器
+  shared: false,              // 是否正展示朋友分享的结果卡
+  shareMsgTimer: null,        // 分享反馈提示定时器
 };
 
 const slotEls = [];           // 8 个属性格的 DOM 引用
@@ -52,6 +54,7 @@ function init() {
     if (!state.isSpinning && !state.finished) renderWheel();
   }, 200));
   resetGame();
+  applySharedResult(); // 链接携带结果时，直接展示朋友分享的偶像卡
 }
 
 function buildSlots() {
@@ -219,6 +222,8 @@ function onSpinEnd() {
       attrId: state.pickedAttr.id,
       attrName: state.pickedAttr.name,
       grade: landed.ref.stats[state.pickedAttr.id],
+      memberId: landed.ref.id,
+      groupId: state.pickedGroup.id,
     });
   }
   updateStepUI();
@@ -417,7 +422,7 @@ function showResult() {
   ).join('');
 
   resultCard.innerHTML =
-    '<div class="rc-head">🎉 恭喜成团！</div>' +
+    '<div class="rc-head">' + (state.shared ? '🎉 朋友分享的偶像卡！' : '🎉 恭喜成团！') + '</div>' +
     '<div class="rc-grade ' + GRADE_CLASS[grade] + '">' + grade + '</div>' +
     '<div class="rc-rating">' + rating + '</div>' +
     '<div class="rc-title">「' + getFunTitle(avg) + '」</div>' +
@@ -426,12 +431,306 @@ function showResult() {
     '<div class="rc-badges">' + badges + '</div>' +
     '<div class="rc-divider"></div>' +
     '<div class="rc-details">' + details + '</div>' +
-    '<button class="spin-btn" id="againBtn">🎀 再来一局</button>';
+    '<button class="spin-btn" id="againBtn">🎀 再来一局</button>' +
+    '<div class="rc-actions">' +
+      '<button class="rc-btn-ghost" id="shareBtn">📤 分享</button>' +
+      '<button class="rc-btn-ghost" id="saveBtn">💾 保存图片</button>' +
+    '</div>' +
+    '<div class="share-panel" id="sharePanel" hidden>' +
+      '<button class="share-opt" id="shareWechat">🟢 分享到微信 / 朋友圈</button>' +
+      '<button class="share-opt" id="shareXhs">📕 复制文案到小红书</button>' +
+      '<div class="share-msg" id="shareMsg"></div>' +
+    '</div>';
 
   resultCard.querySelector('#againBtn').addEventListener('click', resetGame);
+  resultCard.querySelector('#shareBtn').addEventListener('click', () => {
+    const panel = resultCard.querySelector('#sharePanel');
+    panel.hidden = !panel.hidden;
+    showShareMsg(''); // 展开/收起时清空旧反馈
+  });
+  resultCard.querySelector('#shareWechat').addEventListener('click', shareToWechat);
+  resultCard.querySelector('#shareXhs').addEventListener('click', shareToXhs);
+  resultCard.querySelector('#saveBtn').addEventListener('click', saveImage);
 
   overlay.hidden = false;
   requestAnimationFrame(() => overlay.classList.add('show'));
+}
+
+/* ============================================================
+   分享与保存图片
+   ============================================================ */
+
+// 结果摘要文案（分享/小红书通用）
+function buildShareText() {
+  const { avg, grade } = calcOverall();
+  return '我的专属偶像：' + grade + ' 级 · ' + getDebutRating(avg) + '「' + getFunTitle(avg) + '」！快来测测你的 →';
+}
+
+// 携带完整结果的分享链接：#r=<attrId~grade~memberId~groupId|…×8>
+function buildShareUrl() {
+  const seg = state.slots.map(s =>
+    s.attrId + '~' + s.grade + '~' + s.memberId + '~' + s.groupId
+  ).join('|');
+  return location.origin + location.pathname + '#r=' + encodeURIComponent(seg);
+}
+
+// 打开带 #r= 的链接时，还原朋友分享的结果卡；非法数据一律忽略
+function applySharedResult() {
+  const m = /^#r=(.+)$/.exec(location.hash || '');
+  if (!m) return;
+  let raw;
+  try { raw = decodeURIComponent(m[1]); } catch (e) { return; }
+  const parts = raw.split('|');
+  if (parts.length !== 8) return;
+  const slots = [];
+  const seenAttrs = new Set();
+  for (const p of parts) {
+    const f = p.split('~');
+    if (f.length !== 4) return;
+    const attr = ATTRS.find(a => a.id === f[0]);
+    const group = GROUPS.find(g => g.id === f[3]);
+    const member = group && group.members.find(m => m.id === f[2]);
+    if (!attr || !member || !(f[1] in GRADE_VALUES)) return;
+    if (seenAttrs.has(attr.id)) return;
+    seenAttrs.add(attr.id);
+    slots.push({
+      groupName: group.name, generation: group.generation,
+      memberName: member.name, attrId: attr.id, attrName: attr.name, grade: f[1],
+      memberId: member.id, groupId: group.id,
+    });
+  }
+  state.slots = slots;
+  state.finished = true;
+  state.shared = true;
+  for (let i = 0; i < 8; i++) renderSlot(i);
+  updateStepUI();
+  showResult();
+}
+
+// 系统分享面板（手机可选微信/朋友圈）；不支持时降级复制链接
+async function shareToWechat() {
+  const url = buildShareUrl();
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: '✨ 我的专属偶像生成器', text: buildShareText(), url });
+      showShareMsg('');
+      return;
+    } catch (e) {
+      return; // 用户取消分享
+    }
+  }
+  const ok = await copyText(url);
+  showShareMsg(ok ? '✓ 当前设备不支持系统分享，链接已复制' : '复制失败，请手动复制链接');
+}
+
+// 复制文案+链接，粘贴到小红书发布
+async function shareToXhs() {
+  const ok = await copyText(buildShareText() + '\n' + buildShareUrl());
+  showShareMsg(ok ? '✓ 已复制，去小红书粘贴发布吧～' : '复制失败，请手动复制');
+}
+
+// 复制文本：优先剪贴板 API，失败回退 execCommand（兼容 file:// 双击本地）
+async function copyText(text) {
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch (e) { /* 走回退 */ }
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand && document.execCommand('copy');
+    document.body.removeChild(ta);
+    return !!ok;
+  } catch (e) {
+    return false;
+  }
+}
+
+// 结果卡内分享反馈提示
+function showShareMsg(text) {
+  const el = resultCard.querySelector('#shareMsg');
+  if (!el) return;
+  clearTimeout(state.shareMsgTimer);
+  el.textContent = text;
+  if (text) {
+    state.shareMsgTimer = setTimeout(() => { el.textContent = ''; }, 1500);
+  }
+}
+
+// 生成结果卡图片：iOS 走系统分享面板「存储图像」入相册，其余下载 PNG
+async function saveImage() {
+  try {
+    const { blob } = await buildResultImage();
+    if (!blob) {
+      showShareMsg('当前浏览器不支持保存图片');
+      return;
+    }
+    const file = new File([blob], '我的专属偶像.png', { type: 'image/png' });
+    if (navigator.canShare && navigator.share && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: '✨ 我的专属偶像', text: buildShareText() });
+      showShareMsg('');
+      return;
+    }
+    downloadImage(blob);
+    showShareMsg('✓ 图片已保存到下载目录');
+  } catch (e) {
+    showShareMsg('保存失败，请重试');
+  }
+}
+
+function downloadImage(blob) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = '我的专属偶像.png';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// Canvas 自绘结果卡（零依赖，2x 缩放保证清晰）
+function buildResultImage() {
+  const W = 560, H = 640, scale = 2;
+  const canvas = document.createElement('canvas');
+  canvas.width = W * scale;
+  canvas.height = H * scale;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(scale, scale);
+  drawResultCard(ctx, W, H);
+  return new Promise(resolve => {
+    if (canvas.toBlob) {
+      canvas.toBlob(blob => resolve({ canvas, blob }));
+    } else {
+      resolve({ canvas, blob: null });
+    }
+  });
+}
+
+function drawResultCard(ctx, W, H) {
+  const { avg, grade, topAttr, weakAttr } = calcOverall();
+  const rating = getDebutRating(avg);
+  const title = getFunTitle(avg);
+  const comment = pickComment(rating, topAttr, weakAttr);
+  const FONT = '"PingFang SC", "Yuanti SC", "Microsoft YaHei", sans-serif';
+
+  // 白底圆角卡 + 粉色阴影
+  ctx.save();
+  ctx.shadowColor = 'rgba(255, 150, 200, .35)';
+  ctx.shadowBlur = 30;
+  ctx.shadowOffsetY = 12;
+  ctx.fillStyle = '#FFFFFF';
+  roundRectPath(ctx, 0, 0, W, H, 28);
+  ctx.fill();
+  ctx.restore();
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#9A8AAB';
+  ctx.font = '16px ' + FONT;
+  ctx.fillText(state.shared ? '🎉 朋友分享的偶像卡！' : '🎉 恭喜成团！', W / 2, 52);
+
+  // 总评大字（金色渐变）
+  const grad = ctx.createLinearGradient(W / 2 - 60, 0, W / 2 + 60, 0);
+  grad.addColorStop(0, '#F7C86B');
+  grad.addColorStop(1, '#E8964A');
+  ctx.fillStyle = grad;
+  ctx.font = '900 76px ' + FONT;
+  ctx.fillText(grade, W / 2, 130);
+
+  // 评级胶囊
+  ctx.font = '700 14px ' + FONT;
+  const pillW = ctx.measureText(rating).width + 36;
+  ctx.fillStyle = '#FFF3D6';
+  roundRectPath(ctx, W / 2 - pillW / 2, 148, pillW, 30, 15);
+  ctx.fill();
+  ctx.fillStyle = '#C08A3E';
+  ctx.fillText(rating, W / 2, 168);
+
+  // 称号、评语、综合评分
+  ctx.fillStyle = '#5A4A66';
+  ctx.font = '800 19px ' + FONT;
+  ctx.fillText('「' + title + '」', W / 2, 200);
+  ctx.fillStyle = '#9B7BD8';
+  ctx.font = '600 14px ' + FONT;
+  ctx.fillText('💬 ' + comment, W / 2, 224);
+  ctx.fillStyle = '#9A8AAB';
+  ctx.font = '12px ' + FONT;
+  ctx.fillText('综合评分 ' + avg.toFixed(1), W / 2, 244);
+
+  // 属性徽章（4+4 两行）
+  const badgeW = 122, badgeH = 28, gapX = 8, gapY = 8;
+  const rowW = 4 * badgeW + 3 * gapX;
+  const x0 = W / 2 - rowW / 2, y0 = 262;
+  state.slots.forEach((s, i) => {
+    const x = x0 + (i % 4) * (badgeW + gapX);
+    const y = y0 + Math.floor(i / 4) * (badgeH + gapY);
+    ctx.fillStyle = '#FFF9FD';
+    roundRectPath(ctx, x, y, badgeW, badgeH, 14);
+    ctx.fill();
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#9A8AAB';
+    ctx.font = '13px ' + FONT;
+    ctx.fillText(s.attrName, x + 12, y + 18);
+    ctx.textAlign = 'right';
+    ctx.fillStyle = gradeColor(s.grade);
+    ctx.font = '700 14px ' + FONT;
+    ctx.fillText(s.grade, x + badgeW - 12, y + 18);
+    ctx.textAlign = 'center';
+  });
+
+  // 分割线
+  ctx.strokeStyle = '#F3D9E8';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(28, 340);
+  ctx.lineTo(W - 28, 340);
+  ctx.stroke();
+
+  // 明细 8 行
+  ctx.textAlign = 'left';
+  ctx.font = '12.5px ' + FONT;
+  state.slots.forEach((s, i) => {
+    const y = 366 + i * 24;
+    ctx.fillStyle = '#9A8AAB';
+    ctx.fillText(s.attrName, 32, y);
+    ctx.fillText(s.memberName + ' · ' + s.groupName + '（' + s.generation + '代）', 92, y);
+    ctx.textAlign = 'right';
+    ctx.fillStyle = gradeColor(s.grade);
+    ctx.font = '700 13px ' + FONT;
+    ctx.fillText(s.grade, W - 32, y);
+    ctx.font = '12.5px ' + FONT;
+    ctx.textAlign = 'left';
+  });
+
+  // 底部署名
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#9A8AAB';
+  ctx.font = '12px ' + FONT;
+  ctx.fillText('✨ 我的专属偶像生成器 · 快来测测你的专属偶像', W / 2, 585);
+}
+
+// 等级 → 纯色（Canvas 无 CSS 渐变文字，用近似色）
+function gradeColor(grade) {
+  const map = {
+    'S': '#E8964A', 'A+': '#FF5C9E', 'A': '#FF5C9E',
+    'B+': '#9B7BD8', 'B': '#9B7BD8', 'C+': '#7E93AB', 'C': '#7E93AB', 'D': '#8A8A8A',
+  };
+  return map[grade] || '#5A4A66';
+}
+
+// 圆角矩形路径（兼容无 ctx.roundRect 的旧浏览器）
+function roundRectPath(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
 }
 
 /* ============================================================
@@ -451,8 +750,11 @@ function resetGame() {
   clearTimeout(state.endTimer);
   clearTimeout(state.resultTimer);
   clearTimeout(state.toastTimer);
+  clearTimeout(state.shareMsgTimer);
   toastEl.classList.remove('show');
   toastEl.hidden = true;
+  state.shared = false;
+  try { history.replaceState(null, '', location.pathname); } catch (e) { /* file:// 下可能失败，忽略 */ }
   for (let i = 0; i < 8; i++) renderSlot(i);
   renderWheel();
   updateStepUI();
