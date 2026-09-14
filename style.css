@@ -226,6 +226,15 @@ body {
   max-width: 100%;
 }
 
+/* ============ 页脚免责声明 ============ */
+.disclaimer {
+  position: relative; z-index: 1;
+  text-align: center;
+  padding: 10px 20px 36px;
+  font-size: 12px; color: var(--ink-soft);
+  line-height: 1.8;
+}
+
 /* ============ 结果弹层 ============ */
 .overlay {
   position: fixed; inset: 0; z-index: 20;
