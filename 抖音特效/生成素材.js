@@ -54,12 +54,18 @@ function drawWheel(size, withLabels) {
     ctx.font = '700 ' + fs + 'px ' + FONT;
     for (let i = 0; i < n; i++) {
       const mid = (-90 + (i + 0.5) * seg) * Math.PI / 180;
+      const px = cx + Rm * Math.cos(mid), py = cy + Rm * Math.sin(mid);
+      const phi = (i + 0.5) * seg; // 与网页版 CSS rotate 相同的屏幕旋转角（从 12 点顺时针）
       const name = GROUPS[i].name;
-      // 字形保持正立，沿半径堆叠；k=0 在最外侧（与网页版竖排一致：从外圈往圆心读）
+      // 与网页版一致：文字列沿扇区轴线、字形随扇区角度旋转（钟表式排布），k=0 在最外侧
+      ctx.save();
+      ctx.translate(px, py);
+      ctx.rotate(phi * Math.PI / 180);
       for (let k = 0; k < name.length; k++) {
-        const rk = Rm + ((name.length - 1) / 2 - k) * step;
-        ctx.fillText(name[k], cx + rk * Math.cos(mid), cy + rk * Math.sin(mid));
+        const yk = -((name.length - 1) / 2 - k) * step;
+        ctx.fillText(name[k], 0, yk);
       }
+      ctx.restore();
     }
   }
   return c;
