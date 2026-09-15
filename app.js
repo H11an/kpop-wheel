@@ -593,15 +593,26 @@ function downloadImage(blob) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-// Canvas 自绘结果卡（零依赖，2x 缩放保证清晰）
-function buildResultImage() {
-  const W = 560, H = 640, scale = 2;
+// 加载二维码资源（加载失败时返回 null，绘制时跳过）
+function loadQrImage() {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = 'qr.png';
+  });
+}
+
+// Canvas 自绘结果卡（零依赖；3:4 竖版 1080×1440 适配小红书信息流，2x 缩放保证清晰）
+async function buildResultImage() {
+  const W = 540, H = 720, scale = 2;
   const canvas = document.createElement('canvas');
   canvas.width = W * scale;
   canvas.height = H * scale;
   const ctx = canvas.getContext('2d');
   ctx.scale(scale, scale);
-  drawResultCard(ctx, W, H);
+  const qrImg = await loadQrImage();
+  drawResultCard(ctx, W, H, qrImg);
   return new Promise(resolve => {
     if (canvas.toBlob) {
       canvas.toBlob(blob => resolve({ canvas, blob }));
@@ -611,7 +622,7 @@ function buildResultImage() {
   });
 }
 
-function drawResultCard(ctx, W, H) {
+function drawResultCard(ctx, W, H, qrImg) {
   const { avg, grade, topAttr, weakAttr } = calcOverall();
   const rating = getDebutRating(avg);
   const title = getFunTitle(avg);
@@ -630,41 +641,41 @@ function drawResultCard(ctx, W, H) {
 
   ctx.textAlign = 'center';
   ctx.fillStyle = '#9A8AAB';
-  ctx.font = '16px ' + FONT;
-  ctx.fillText(state.shared ? '🎉 朋友分享的偶像卡！' : '🎉 恭喜成团！', W / 2, 52);
+  ctx.font = '17px ' + FONT;
+  ctx.fillText(state.shared ? '🎉 朋友分享的偶像卡！' : '🎉 恭喜成团！', W / 2, 54);
 
   // 总评大字（金色渐变）
-  const grad = ctx.createLinearGradient(W / 2 - 60, 0, W / 2 + 60, 0);
+  const grad = ctx.createLinearGradient(W / 2 - 70, 0, W / 2 + 70, 0);
   grad.addColorStop(0, '#F7C86B');
   grad.addColorStop(1, '#E8964A');
   ctx.fillStyle = grad;
-  ctx.font = '900 76px ' + FONT;
-  ctx.fillText(grade, W / 2, 130);
+  ctx.font = '900 96px ' + FONT;
+  ctx.fillText(grade, W / 2, 148);
 
   // 评级胶囊
   ctx.font = '700 14px ' + FONT;
   const pillW = ctx.measureText(rating).width + 36;
   ctx.fillStyle = '#FFF3D6';
-  roundRectPath(ctx, W / 2 - pillW / 2, 148, pillW, 30, 15);
+  roundRectPath(ctx, W / 2 - pillW / 2, 170, pillW, 32, 16);
   ctx.fill();
   ctx.fillStyle = '#C08A3E';
-  ctx.fillText(rating, W / 2, 168);
+  ctx.fillText(rating, W / 2, 192);
 
   // 称号、评语、综合评分
   ctx.fillStyle = '#5A4A66';
-  ctx.font = '800 19px ' + FONT;
-  ctx.fillText('「' + title + '」', W / 2, 200);
+  ctx.font = '800 21px ' + FONT;
+  ctx.fillText('「' + title + '」', W / 2, 226);
   ctx.fillStyle = '#9B7BD8';
-  ctx.font = '600 14px ' + FONT;
-  ctx.fillText('💬 ' + comment, W / 2, 224);
+  ctx.font = '600 14.5px ' + FONT;
+  ctx.fillText('💬 ' + comment, W / 2, 254);
   ctx.fillStyle = '#9A8AAB';
-  ctx.font = '12px ' + FONT;
-  ctx.fillText('综合评分 ' + avg.toFixed(1), W / 2, 244);
+  ctx.font = '12.5px ' + FONT;
+  ctx.fillText('综合评分 ' + avg.toFixed(1), W / 2, 278);
 
   // 属性徽章（4+4 两行）
   const badgeW = 122, badgeH = 28, gapX = 8, gapY = 8;
   const rowW = 4 * badgeW + 3 * gapX;
-  const x0 = W / 2 - rowW / 2, y0 = 262;
+  const x0 = W / 2 - rowW / 2, y0 = 302;
   state.slots.forEach((s, i) => {
     const x = x0 + (i % 4) * (badgeW + gapX);
     const y = y0 + Math.floor(i / 4) * (badgeH + gapY);
@@ -686,31 +697,42 @@ function drawResultCard(ctx, W, H) {
   ctx.strokeStyle = '#F3D9E8';
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(28, 340);
-  ctx.lineTo(W - 28, 340);
+  ctx.moveTo(28, 382);
+  ctx.lineTo(W - 28, 382);
   ctx.stroke();
 
   // 明细 8 行
   ctx.textAlign = 'left';
   ctx.font = '12.5px ' + FONT;
   state.slots.forEach((s, i) => {
-    const y = 366 + i * 24;
+    const y = 410 + i * 24;
     ctx.fillStyle = '#9A8AAB';
-    ctx.fillText(s.attrName, 32, y);
-    ctx.fillText(s.memberName + ' · ' + s.groupName + '（' + s.generation + '代）', 92, y);
+    ctx.fillText(s.attrName, 28, y);
+    ctx.fillText(s.memberName + ' · ' + s.groupName + '（' + s.generation + '代）', 84, y);
     ctx.textAlign = 'right';
     ctx.fillStyle = gradeColor(s.grade);
     ctx.font = '700 13px ' + FONT;
-    ctx.fillText(s.grade, W - 32, y);
+    ctx.fillText(s.grade, W - 28, y);
     ctx.font = '12.5px ' + FONT;
     ctx.textAlign = 'left';
   });
 
-  // 底部署名
+  // 底部：网址 + 二维码（长按识别直接进入游戏）
   ctx.textAlign = 'center';
   ctx.fillStyle = '#9A8AAB';
-  ctx.font = '12px ' + FONT;
-  ctx.fillText('✨ 我的专属偶像生成器 · 快来测测你的专属偶像', W / 2, 585);
+  ctx.font = '13px ' + FONT;
+  ctx.fillText('长按识别二维码 · 测测你的专属偶像', W / 2, 590);
+  ctx.font = '700 14px ' + FONT;
+  ctx.fillStyle = '#5A4A66';
+  ctx.fillText('h11an.github.io/kpop-wheel', W / 2, 610);
+  if (qrImg) {
+    ctx.drawImage(qrImg, (W - 88) / 2, 618, 88, 88);
+  } else {
+    // 二维码资源缺失时的兜底提示
+    ctx.font = '12px ' + FONT;
+    ctx.fillStyle = '#9A8AAB';
+    ctx.fillText('（二维码加载失败）', W / 2, 700);
+  }
 }
 
 // 等级 → 纯色（Canvas 无 CSS 渐变文字，用近似色）
