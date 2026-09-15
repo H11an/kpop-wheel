@@ -609,13 +609,13 @@ function downloadImage(blob) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-// 加载二维码资源（加载失败时返回 null，绘制时跳过）
+// 加载二维码（base64 内嵌，见 data.js；加载失败时返回 null，绘制时跳过）
 function loadQrImage() {
   return new Promise(resolve => {
     const img = new Image();
     img.onload = () => resolve(img);
     img.onerror = () => resolve(null);
-    img.src = 'qr.png';
+    img.src = QR_DATA_URL;
   });
 }
 
