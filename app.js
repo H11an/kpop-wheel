@@ -563,7 +563,7 @@ function showShareMsg(text) {
   }
 }
 
-// 生成结果卡图片：iOS 走系统分享面板「存储图像」入相册，其余下载 PNG
+// 生成结果卡图片：iOS 走系统分享面板「存储图像」入相册；分享面板出错自动回退为直接下载
 async function saveImage() {
   try {
     const { blob } = await buildResultImage();
@@ -573,9 +573,14 @@ async function saveImage() {
     }
     const file = new File([blob], '我的专属偶像.png', { type: 'image/png' });
     if (navigator.canShare && navigator.share && navigator.canShare({ files: [file] })) {
-      await navigator.share({ files: [file], title: '✨ 我的专属偶像', text: buildShareText() });
-      showShareMsg('');
-      return;
+      try {
+        await navigator.share({ files: [file], title: '✨ 我的专属偶像', text: buildShareText() });
+        showShareMsg('');
+        return;
+      } catch (e) {
+        if (e && e.name === 'AbortError') return; // 用户主动取消分享面板，不算失败
+        // 其他分享错误：继续往下走下载回退
+      }
     }
     downloadImage(blob);
     showShareMsg('✓ 图片已保存到下载目录');
