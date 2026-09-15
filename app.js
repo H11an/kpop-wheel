@@ -575,7 +575,14 @@ async function saveImage(withQr) {
       return;
     }
     const file = new File([blob], '我的专属偶像.png', { type: 'image/png' });
-    if (navigator.canShare && navigator.share && navigator.canShare({ files: [file] })) {
+    // canShare 本身也可能抛错（老版本浏览器），一律按「不支持文件分享」处理 → 走下载
+    let canFileShare = false;
+    try {
+      canFileShare = !!(navigator.canShare && navigator.share && navigator.canShare({ files: [file] }));
+    } catch (e) {
+      canFileShare = false;
+    }
+    if (canFileShare) {
       try {
         await navigator.share({ files: [file], title: '✨ 我的专属偶像', text: buildShareText() });
         showShareMsg('');
@@ -588,7 +595,8 @@ async function saveImage(withQr) {
     downloadImage(blob);
     showShareMsg('✓ 图片已保存到下载目录');
   } catch (e) {
-    showShareMsg('保存失败，请重试');
+    console.error('保存图片失败:', e);
+    showShareMsg('保存失败（' + (e && e.name ? e.name : '未知错误') + '），请重试');
   }
 }
 
