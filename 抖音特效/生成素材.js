@@ -1,6 +1,6 @@
-/* 抖音特效素材生成器 v3：node-canvas 程序化绘制（透明底）
-   转盘文字：水平钟表式——每个团名一行横排文字，随扇区角度旋转
-   （12 点方向正常横排，与网站版转盘观感一致）
+/* 抖音特效素材生成器 v4：node-canvas 程序化绘制（透明底）
+   转盘文字：书脊式竖排，与网页版 CSS writing-mode:vertical-rl 完全一致——
+   字母逐字竖叠（外圈→圆心）、每个字母躺倒 90°、整列随扇区角度旋转
    用法：先 npm install canvas（开发机一次性安装），再 node 生成素材.js */
 'use strict';
 let createCanvas;
@@ -47,25 +47,27 @@ function drawWheel(size, withLabels) {
   }
   if (withLabels) {
     const Rm = size * 0.34;
-    // 按最长团名自适应字号：文字中心在 Rm，向内外各最多延伸 145px
+    // 按最长团名自适应字号：整列长度 len×fs×1.15，向内外各最多延伸 145px
     let fs = 20;
+    const step = fs * 1.15;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.font = '700 ' + fs + 'px ' + FONT;
-    const maxW = Math.max(...GROUPS.map(g => ctx.measureText(g.name).width));
-    if (maxW / 2 > 145) fs = Math.max(12, Math.floor(fs * 145 / (maxW / 2)));
     ctx.font = '700 ' + fs + 'px ' + FONT;
     ctx.fillStyle = '#5A4A66';
     for (let i = 0; i < n; i++) {
       const mid = (-90 + (i + 0.5) * seg) * Math.PI / 180;
-      const px = cx + Rm * Math.cos(mid), py = cy + Rm * Math.sin(mid);
       const phi = (i + 0.5) * seg; // 与网页版 CSS rotate 相同的屏幕旋转角（从 12 点顺时针）
-      // 水平钟表式：整行团名居中于扇区轴线，随扇区角度旋转
-      ctx.save();
-      ctx.translate(px, py);
-      ctx.rotate(phi * Math.PI / 180);
-      ctx.fillText(GROUPS[i].name, 0, 0);
-      ctx.restore();
+      const name = GROUPS[i].name;
+      // 书脊式竖排（= 网页版 vertical-rl）：k=0 在最外侧，逐字向圆心堆叠，
+      // 每个字形额外旋转 90°（拉丁字母躺倒），整列随扇区角度旋转
+      for (let k = 0; k < name.length; k++) {
+        const rk = Rm + ((name.length - 1) / 2 - k) * step;
+        ctx.save();
+        ctx.translate(cx + rk * Math.cos(mid), cy + rk * Math.sin(mid));
+        ctx.rotate((phi + 90) * Math.PI / 180);
+        ctx.fillText(name[k], 0, 0);
+        ctx.restore();
+      }
     }
   }
   return c;
