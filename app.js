@@ -439,6 +439,7 @@ function showResult() {
     '<div class="share-panel" id="sharePanel" hidden>' +
       '<button class="share-opt" id="shareWechat">🟢 分享到微信 / 朋友圈</button>' +
       '<button class="share-opt" id="shareXhs">📕 复制文案到小红书</button>' +
+      '<button class="share-opt" id="saveCleanBtn">🖼 保存纯净图（小红书用，无二维码）</button>' +
       '<div class="share-msg" id="shareMsg"></div>' +
     '</div>';
 
@@ -450,7 +451,8 @@ function showResult() {
   });
   resultCard.querySelector('#shareWechat').addEventListener('click', shareToWechat);
   resultCard.querySelector('#shareXhs').addEventListener('click', shareToXhs);
-  resultCard.querySelector('#saveBtn').addEventListener('click', saveImage);
+  resultCard.querySelector('#saveBtn').addEventListener('click', () => saveImage(true));
+  resultCard.querySelector('#saveCleanBtn').addEventListener('click', () => saveImage(false));
 
   overlay.hidden = false;
   requestAnimationFrame(() => overlay.classList.add('show'));
@@ -564,9 +566,10 @@ function showShareMsg(text) {
 }
 
 // 生成结果卡图片：iOS 走系统分享面板「存储图像」入相册；分享面板出错自动回退为直接下载
-async function saveImage() {
+// withQr=false 时为纯净版（无二维码/网址，供小红书等平台规避站外导流审核）
+async function saveImage(withQr) {
   try {
-    const { blob } = await buildResultImage();
+    const { blob } = await buildResultImage(withQr);
     if (!blob) {
       showShareMsg('当前浏览器不支持保存图片');
       return;
@@ -609,15 +612,15 @@ function loadQrImage() {
 }
 
 // Canvas 自绘结果卡（零依赖；3:4 竖版 1080×1440 适配小红书信息流，2x 缩放保证清晰）
-async function buildResultImage() {
+async function buildResultImage(withQr) {
   const W = 540, H = 720, scale = 2;
   const canvas = document.createElement('canvas');
   canvas.width = W * scale;
   canvas.height = H * scale;
   const ctx = canvas.getContext('2d');
   ctx.scale(scale, scale);
-  const qrImg = await loadQrImage();
-  drawResultCard(ctx, W, H, qrImg);
+  const qrImg = withQr ? await loadQrImage() : null;
+  drawResultCard(ctx, W, H, qrImg, withQr);
   return new Promise(resolve => {
     if (canvas.toBlob) {
       canvas.toBlob(blob => resolve({ canvas, blob }));
@@ -627,7 +630,7 @@ async function buildResultImage() {
   });
 }
 
-function drawResultCard(ctx, W, H, qrImg) {
+function drawResultCard(ctx, W, H, qrImg, withQr) {
   const { avg, grade, topAttr, weakAttr } = calcOverall();
   const rating = getDebutRating(avg);
   const title = getFunTitle(avg);
@@ -722,21 +725,27 @@ function drawResultCard(ctx, W, H, qrImg) {
     ctx.textAlign = 'left';
   });
 
-  // 底部：网址 + 二维码（长按识别直接进入游戏）
+  // 底部：带码版印网址 + 二维码；纯净版只留一行站名（供小红书规避站外导流审核）
   ctx.textAlign = 'center';
-  ctx.fillStyle = '#9A8AAB';
-  ctx.font = '13px ' + FONT;
-  ctx.fillText('长按识别二维码 · 测测你的专属偶像', W / 2, 590);
-  ctx.font = '700 14px ' + FONT;
-  ctx.fillStyle = '#5A4A66';
-  ctx.fillText('h11an.github.io/kpop-wheel', W / 2, 610);
-  if (qrImg) {
-    ctx.drawImage(qrImg, (W - 88) / 2, 618, 88, 88);
-  } else {
-    // 二维码资源缺失时的兜底提示
-    ctx.font = '12px ' + FONT;
+  if (withQr) {
     ctx.fillStyle = '#9A8AAB';
-    ctx.fillText('（二维码加载失败）', W / 2, 700);
+    ctx.font = '13px ' + FONT;
+    ctx.fillText('长按识别二维码 · 测测你的专属偶像', W / 2, 590);
+    ctx.font = '700 14px ' + FONT;
+    ctx.fillStyle = '#5A4A66';
+    ctx.fillText('h11an.github.io/kpop-wheel', W / 2, 610);
+    if (qrImg) {
+      ctx.drawImage(qrImg, (W - 88) / 2, 618, 88, 88);
+    } else {
+      // 二维码资源缺失时的兜底提示
+      ctx.font = '12px ' + FONT;
+      ctx.fillStyle = '#9A8AAB';
+      ctx.fillText('（二维码加载失败）', W / 2, 700);
+    }
+  } else {
+    ctx.fillStyle = '#9A8AAB';
+    ctx.font = '13px ' + FONT;
+    ctx.fillText('✨ Kpop偶像转盘 · 我的专属偶像生成器', W / 2, 610);
   }
 }
 
