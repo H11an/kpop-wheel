@@ -15,6 +15,7 @@ import * as APJS from 'APJS';
 @component()
 export class KpopWheelScript extends APJS.BasicScriptComponent {
   @input() wheelImage!: APJS.SceneObject;
+  @input() textHistory!: APJS.TextComponent;
   @input() textGroup!: APJS.TextComponent;
   @input() textMember!: APJS.TextComponent;
   @input() textAttr!: APJS.TextComponent;
@@ -29,7 +30,7 @@ export class KpopWheelScript extends APJS.BasicScriptComponent {
   private autoSpin = true;
 
   onStart() {
-    this.setTexts('', '', '', '');
+    this.setTexts('', '', '', '', '');
   }
 
   // 触发抽卡（点击屏幕/点头时调用本方法）
@@ -41,7 +42,7 @@ export class KpopWheelScript extends APJS.BasicScriptComponent {
     this.spinElapsedMs = 0;
     this.spinDeltaDeg = t.deltaDeg;
     this.spinDurationMs = t.durationMs;
-    this.setTexts('', '', '', '');
+    this.setTexts('', '', '', '', '');
   }
 
   onUpdate(deltaTime: number) {
@@ -61,7 +62,8 @@ export class KpopWheelScript extends APJS.BasicScriptComponent {
             '🎯 ' + r.group,
             '⭐ ' + r.member,
             r.attr + '　' + r.grade,
-            '「' + r.title + '」'
+            '「' + r.title + '」',
+            WHEEL_LOGIC.getHistoryText()
           );
         }
       }
@@ -70,7 +72,8 @@ export class KpopWheelScript extends APJS.BasicScriptComponent {
     }
   }
 
-  private setTexts(g: string, m: string, a: string, t: string) {
+  private setTexts(g: string, m: string, a: string, t: string, h: string) {
+    if (this.textHistory) this.textHistory.text = h;
     if (this.textGroup) this.textGroup.text = g;
     if (this.textMember) this.textMember.text = m;
     if (this.textAttr) this.textAttr.text = a;
@@ -94,8 +97,10 @@ const WHEEL_LOGIC = (() => {
     targetDeg: 0,        // 本次旋转目标角度
     result: null,        // { group, member, attr, grade, title }
     cooldownMs: 0,       // 结果展示停留计时
+    history: [],         // 已抽出的「属性+等级」记分牌（顶部横排累计显示）
   };
   const RESULT_HOLD_MS = 4000; // 结果展示时长，之后可再次触发
+  const HISTORY_MAX = 8; // 记分牌最多保留 8 条，超出丢最旧的（保证一行放得下）
 
   // 指针在转盘顶部；本地角 p ≡ (360 − θ)，扇区 i 以 i×seg 为中心（与网页版同约定）
   function sectorAt(theta) {
@@ -136,7 +141,14 @@ const WHEEL_LOGIC = (() => {
     state.wheelDeg = state.targetDeg;
     state.phase = 'result';
     state.cooldownMs = RESULT_HOLD_MS;
+    state.history.push({ attr: state.result.attr, grade: state.result.grade });
+    if (state.history.length > HISTORY_MAX) state.history.shift();
     return state.result;
+  }
+
+  // 顶部记分牌文案：「舞蹈 S　唱功 A+　…」（适配层显示在 textHistory 上）
+  function getHistoryText() {
+    return state.history.map(h => h.attr + ' ' + h.grade).join('　');
   }
 
   // 每帧推进（deltaMs 为距上一帧毫秒数）；结果展示结束自动回到 idle
@@ -175,8 +187,9 @@ const WHEEL_LOGIC = (() => {
     state.targetDeg = 0;
     state.result = null;
     state.cooldownMs = 0;
+    state.history = [];
   }
 
-  return { SEG, trigger, onLanded, tick, rotationDeg, reset, get state() { return state; } };
+  return { SEG, trigger, onLanded, tick, rotationDeg, getHistoryText, reset, get state() { return state; } };
 })();
 
